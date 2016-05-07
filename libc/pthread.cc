@@ -77,6 +77,7 @@ namespace pthread_private {
         void* _retval;
         // must be initialized last
         sched::thread _thread;
+        int cancel_state;
     private:
         sched::thread::stack_info allocate_stack(thread_attr attr);
         static void free_stack(sched::thread::stack_info si);
@@ -99,6 +100,7 @@ namespace pthread_private {
                 current_pthread = to_libc();
                 sigprocmask(SIG_SETMASK, &sigset, nullptr);
                 _retval = start(arg);
+                cancel_state = PTHREAD_CANCEL_ENABLE;
             }, attributes(attr ? *attr : thread_attr()), false, true)
     {
         _thread.set_cleanup([=] { delete this; });
@@ -664,7 +666,11 @@ int pthread_attr_getscope(pthread_attr_t *attr, int *scope)
 
 int pthread_setcancelstate(int state, int *oldstate)
 {
-    WARN_STUBBED();
+    pthread* current_thread = pthread::from_libc(pthread_self());
+    if (oldstate)
+        (*oldstate) = current_thread->cancel_state;
+    // TODO: check bounds on state before assigning it to current_thread
+    current_thread->cancel_state = state;
     return 0;
 }
 
