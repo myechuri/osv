@@ -77,6 +77,7 @@ namespace pthread_private {
         void* _retval;
         // must be initialized last
         sched::thread _thread;
+        int cancel_state;
     private:
         sched::thread::stack_info allocate_stack(thread_attr attr);
         static void free_stack(sched::thread::stack_info si);
@@ -102,6 +103,9 @@ namespace pthread_private {
             }, attributes(attr ? *attr : thread_attr()), false, true)
     {
         _thread.set_cleanup([=] { delete this; });
+
+        // Initialize default cancel state to PTHREAD_CANCEL_ENABLE.
+        cancel_state = PTHREAD_CANCEL_ENABLE;
     }
 
     void pthread::start()
@@ -662,9 +666,24 @@ int pthread_attr_getscope(pthread_attr_t *attr, int *scope)
     return 0;
 }
 
+// Set cancelability state of current thread.
+// For spec, please refer
+// http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_setcancelstate.html
 int pthread_setcancelstate(int state, int *oldstate)
 {
-    WARN_STUBBED();
+    if (state != PTHREAD_CANCEL_ENABLE &&
+        state != PTHREAD_CANCEL_DISABLE) {
+        // Invalid target cancel state.
+        return EINVAL;
+    }
+
+    pthread* current_thread = pthread::from_libc(pthread_self());
+    if (oldstate) {
+        // Gather current cancel state, if requested.
+        (*oldstate) = current_thread->cancel_state;
+    }
+
+    current_thread->cancel_state = state;
     return 0;
 }
 
