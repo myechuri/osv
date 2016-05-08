@@ -664,12 +664,17 @@ int pthread_attr_getscope(pthread_attr_t *attr, int *scope)
     return 0;
 }
 
+// http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_setcancelstate.html
 int pthread_setcancelstate(int state, int *oldstate)
 {
-    pthread* current_thread = pthread::from_libc(pthread_self());
+    if (state != PTHREAD_CANCEL_ENABLE &&
+        state != PTHREAD_CANCEL_DISABLE) {
+        return EINVAL;
+    }
     if (oldstate)
         (*oldstate) = current_thread->cancel_state;
-    // TODO: check bounds on state before assigning it to current_thread
+
+    pthread* current_thread = pthread::from_libc(pthread_self());
     current_thread->cancel_state = state;
     return 0;
 }
