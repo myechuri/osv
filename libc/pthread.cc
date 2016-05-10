@@ -671,10 +671,10 @@ int pthread_setcancelstate(int state, int *oldstate)
         state != PTHREAD_CANCEL_DISABLE) {
         return EINVAL;
     }
+    pthread* current_thread = pthread::from_libc(pthread_self());
     if (oldstate)
         (*oldstate) = current_thread->cancel_state;
 
-    pthread* current_thread = pthread::from_libc(pthread_self());
     current_thread->cancel_state = state;
     return 0;
 }
