@@ -100,10 +100,12 @@ namespace pthread_private {
                 current_pthread = to_libc();
                 sigprocmask(SIG_SETMASK, &sigset, nullptr);
                 _retval = start(arg);
-                cancel_state = PTHREAD_CANCEL_ENABLE;
             }, attributes(attr ? *attr : thread_attr()), false, true)
     {
         _thread.set_cleanup([=] { delete this; });
+
+        // Initialize default cancel state to PTHREAD_CANCEL_ENABLE.
+        cancel_state = PTHREAD_CANCEL_ENABLE;
     }
 
     void pthread::start()
@@ -664,16 +666,22 @@ int pthread_attr_getscope(pthread_attr_t *attr, int *scope)
     return 0;
 }
 
+// Set cancelability state of current thread.
+// For spec, please refer
 // http://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_setcancelstate.html
 int pthread_setcancelstate(int state, int *oldstate)
 {
     if (state != PTHREAD_CANCEL_ENABLE &&
         state != PTHREAD_CANCEL_DISABLE) {
+        // Invalid target cancel state.
         return EINVAL;
     }
+
     pthread* current_thread = pthread::from_libc(pthread_self());
-    if (oldstate)
+    if (oldstate) {
+        // Gather current cancel state, if requested.
         (*oldstate) = current_thread->cancel_state;
+    }
 
     current_thread->cancel_state = state;
     return 0;

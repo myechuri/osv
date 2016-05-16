@@ -4,11 +4,15 @@
  * This work is open source software, licensed under the terms of the
  * BSD license as described in the LICENSE file in the top-level directory.
  *
- * Test pthread_setcancelstate().
+ * Test pthread_setcancelstate()
  *
  * To run the test on Linux:
  * Step 1: g++ -g -pthread -std=c++11 tests/tst-pthread-setcancelstate.cc
  * Step 2: a.out
+ *
+ * To run the test on OSv:
+ * Step 1: scripts/build image=tests
+ * Step 2: scripts/run.py -e tests/tst-pthread-setcancelstate.so
  */
 
 #include <cassert>
@@ -17,16 +21,16 @@
 #include <string.h>
 #include <thread>
 
-# define INVALID_STATE 100
+#define INVALID_STATE 100
+#define DEFAULT_STATE PTHREAD_CANCEL_ENABLE
 
 void thread_payload(int thread_id) {
     int old_state, retval;
-    int default_state = PTHREAD_CANCEL_ENABLE;
 
     // Test 1: Verify default cancel state is PTHREAD_CANCEL_ENABLE.
     retval = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &old_state);
     assert((retval == 0) &&
-           (old_state == PTHREAD_CANCEL_ENABLE));
+           (old_state == DEFAULT_STATE));
     printf("Thread %d: Verified default cancel state is %d\n",
            thread_id, old_state);
 
