@@ -3,15 +3,22 @@
  *
  * This work is open source software, licensed under the terms of the
  * BSD license as described in the LICENSE file in the top-level directory.
+ *
  */
 
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <unistd.h>
+#include <signal.h>
+#include <thread>
+#include <osv/ioctl.h>
 #include <osv/sched.hh>
 #include <osv/debug.hh>
 
 int tests = 0, fails = 0;
+
+std::atomic<int> sigio_count { 0 };
+void handler(int sig) { sigio_count += 1;}
 
 static void report(bool ok, const char* msg)
 {
@@ -20,14 +27,70 @@ static void report(bool ok, const char* msg)
     debug("%s: %s\n", (ok ? "PASS" : "FAIL"), msg);
 }
 
+void reset_fio_flags(int *s) {
+    int flag = 0;
+    int r = ioctl(s[0], FIONBIO, &flag);
+    report(r == 0, "ioctl, turned off FIONBIO for write");
+    r = ioctl(s[1], FIONBIO, &flag);
+    report(r == 0, "ioctl, turned off FIONBIO for read");
+    r = ioctl(s[0], FIOASYNC, &flag);
+    report(r == 0, "ioctl, turned off FIOASYNC for write");
+    r = ioctl(s[1], FIOASYNC, &flag);
+    report(r == 0, "ioctl, turned off FIOASYNC for read");
+}
 int main(int ac, char** av)
 {
     int s[2];
+    int flag = 1;
 
     int r = socketpair(AF_LOCAL, SOCK_STREAM, 0, s);
     report(r == 0, "socketpair call");
 
+    // Begin: Test ioctl FIOCLEX (randomly picked from unsupported commands).
+    r = ioctl(s[0], FIOCLEX, &flag);
+    report(r == -1 && errno == ENOTTY, "ioctl, unsupported command FIOCLEX");
+    // End: Test ioctl FIOCLEX.
+   
+    // Begin: Test ioctl FIONBIO (supported).
+    flag = 1;
+    r = ioctl(s[1], FIONBIO, &flag);
+    report(r == 0, "ioctl, turned on FIONBIO for read");
     char msg[] = "hello", reply[] = "wrong";
+    r = read(s[1], reply, 5);
+    report(r == -1,
+           "read, non-blocking read succeeded when there is nothing to read");
+    r = write(s[0], msg, 5);
+    report(r == 5, "write to empty socket");
+    r = read(s[1], reply, 5);
+    report(r == 5 && memcmp(msg, reply, 5) == 0, "read after write");
+    reset_fio_flags(s);
+    // End: Test ioctl FIONBIO (supported).
+
+    // Begin: Test ioctl FIOASYNC (supported).
+    auto sr = signal(SIGIO, handler);
+    flag = 1;
+    r = ioctl(s[0], FIOASYNC, &flag);
+    report(r == 0, "ioctl, turned on FIOASYNC for write");
+    r = ioctl(s[1], FIOASYNC, &flag);
+    report(r == 0, "ioctl, turned on FIOASYNC for read");
+    std::thread thread1([&] {r = write(s[0], msg, 5);} );
+    while (sigio_count == 0) {
+        usleep(100000);
+    };
+    report(sigio_count == 1, "SIGIO received after write completed");
+    r = read(s[1], reply, 5);
+    report(r == 5 && memcmp(msg, reply, 5) == 0, "read after write");
+    while (sigio_count == 1) {
+        usleep(100000);
+    }
+    report(sigio_count == 2, "SIGIO received after read completed");
+    thread1.join();
+    close(s[0]);
+    close(s[1]);
+    // End: Test ioctl FIOASYNC.
+
+    r = socketpair(AF_LOCAL, SOCK_STREAM, 0, s);
+    report(r == 0, "socketpair call");
     r = write(s[0], msg, 5);
     report(r == 5, "write to empty socket");
     r = read(s[1], reply, 5);
@@ -130,7 +193,6 @@ int main(int ac, char** av)
         close(s);
     }
     report(nsock > 100, "create many sockets");
-
 
     debug("SUMMARY: %d tests, %d failures\n", tests, fails);
 }

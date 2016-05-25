@@ -11,6 +11,7 @@
 #include "pipe_buffer.hh"
 
 #include <osv/poll.h>
+#include <signal.h>
 
 void pipe_buffer::detach_sender()
 {
@@ -110,6 +111,14 @@ int pipe_buffer::read(uio* data, bool nonblock)
     copy_to_uio(q, data);
     if (write_events_unlocked() & POLLOUT)
         poll_wake(sender, (POLLOUT | POLLWRNORM));
+    if (sender->f_flags & FASYNC) {
+        // Deliver SIGIO to the OSv process.
+        // Note: There is no need to gather sender fd owner pid
+        // because OSv implements one process.
+        // FIXME: Once Out-of-band support is available in OSv,
+        // support delivery of SIGURG.
+        kill(getpid(), SIGIO);
+    }
     lock.unlock();
     may_write.wake_all();
     return 0;
@@ -190,6 +199,14 @@ int pipe_buffer::write(uio* data, bool nonblock)
         }
         if (read_events_unlocked() & POLLIN)
             poll_wake(receiver, (POLLIN | POLLRDNORM));
+        if (receiver->f_flags & FASYNC) {
+            // Deliver SIGIO to the OSv process.
+            // Note: There is no need to gather receiver fd owner pid
+            // because OSv implements one process.
+            // FIXME: Once Out-of-band support is available in OSv,
+            // support delivery of SIGURG.
+            kill(getpid(), SIGIO);
+        }
     }
     may_read.wake_all();
     return 0;
