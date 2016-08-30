@@ -15,9 +15,9 @@
 #include <osv/sched.hh>
 #include <osv/debug.hh>
 
-int tests = 0, fails = 0;
+static int tests = 0, fails = 0;
 
-std::atomic<int> sigio_count { 0 };
+static std::atomic<int> sigio_count { 0 };
 void handler(int sig) { sigio_count += 1;}
 
 static void report(bool ok, const char* msg)

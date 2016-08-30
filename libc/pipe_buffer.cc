@@ -111,7 +111,7 @@ int pipe_buffer::read(uio* data, bool nonblock)
     copy_to_uio(q, data);
     if (write_events_unlocked() & POLLOUT)
         poll_wake(sender, (POLLOUT | POLLWRNORM));
-    if (sender->f_flags & FASYNC) {
+    if (sender && sender->f_flags & FASYNC) {
         // Deliver SIGIO to the OSv process.
         // Note: There is no need to gather sender fd owner pid
         // because OSv implements one process.
