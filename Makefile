@@ -466,7 +466,7 @@ $(out)/fastlz/lzloader.o: fastlz/lzloader.cc | generated-headers
 
 $(out)/lzloader.elf: $(out)/loader-stripped.elf.lz.o $(out)/fastlz/lzloader.o arch/x64/lzloader.ld \
 	$(out)/fastlz/fastlz.o
-	$(call very-quiet, scripts/check-image-size.sh $(out)/loader-stripped.elf 23068672)
+	$(call very-quiet, scripts/check-image-size.sh $(out)/loader-stripped.elf 160068672)
 	$(call quiet, $(LD) -o $@ \
 		-Bdynamic --export-dynamic --eh-frame-hdr --enable-new-dtags \
 		-T arch/x64/lzloader.ld \

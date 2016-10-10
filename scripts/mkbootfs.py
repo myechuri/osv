@@ -84,23 +84,31 @@ def main():
     if options.depends:
         depends = open(options.depends, 'w')
     out = open(options.output, 'wb')
-    
+    print("out: " + options.output)
+    print("manifest: " + options.manifest)
+
     depends.write(u'%s: \\\n' % (options.output,))
 
     files = read_manifest(options.manifest)
+    
     files = list(expand(files.items()))
     files = [(x, unsymlink(y)) for (x, y) in files]
 
     pos = (len(files) + 1) * metadata_size
 
     for name, hostname in files:
-        if hostname.startswith("->"):
-            raise Exception("Symlinks in bootfs are not supported")
+        # if hostname.startswith("->"):
+            # raise Exception("Symlinks in bootfs are not supported")
 
         if os.path.isdir(hostname):
             size = 0;
             if not name.endswith("/"):
                 name += "/"
+        # myechuri
+        elif hostname.startswith("->"):
+            print("skipping " + hostname)
+            hostname = hostname[2:]
+            size = 0
         else:
             size = os.stat(hostname).st_size
 
@@ -113,6 +121,8 @@ def main():
 
     for name, hostname in files:
         if os.path.isdir(hostname):
+            continue
+        if hostname.startswith("->"):
             continue
         out.write(open(hostname, 'rb').read())
 

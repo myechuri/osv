@@ -77,6 +77,7 @@ ramfs_free_node(struct ramfs_node *np)
 	if (np->rn_buf != NULL)
 		free(np->rn_buf);
 
+        free(np->symlink);
 	free(np->rn_name);
 	free(np);
 }
@@ -275,11 +276,9 @@ ramfs_truncate(struct vnode *vp, off_t length)
 	return 0;
 }
 
-/*
- * Create empty file.
- */
 static int
-ramfs_create(struct vnode *dvp, char *name, mode_t mode)
+__ramfs_create(struct vnode *dvp, char *name, mode_t mode,
+             const char *symlink)
 {
 	struct ramfs_node *np;
 
@@ -290,7 +289,17 @@ ramfs_create(struct vnode *dvp, char *name, mode_t mode)
 	np = ramfs_add_node((ramfs_node*)dvp->v_data, name, VREG);
 	if (np == NULL)
 		return ENOMEM;
+        np->symlink = strdup(symlink);
 	return 0;
+}
+
+/*
+ * Create empty file.
+ */
+static int
+ramfs_create(struct vnode *dvp, char *name, mode_t mode)
+{
+        return __ramfs_create(dvp, name, mode, NULL);
 }
 
 static int
@@ -321,7 +330,7 @@ ramfs_read(struct vnode *vp, struct file *fp, struct uio *uio, int ioflag)
 		len = uio->uio_resid;
 
 	return uiomove(np->rn_buf + uio->uio_offset, len, uio);
-}
+} 
 
 static int
 ramfs_write(struct vnode *vp, struct uio *uio, int ioflag)
@@ -467,6 +476,14 @@ ramfs_getattr(struct vnode *vnode, struct vattr *attr)
 	return 0;
 }
 
+static int
+ramfs_symlink(struct vnode *vnode, char *pathname,
+              char *newpath)
+{
+        mode_t mode = S_IFLNK | S_IRWXU | S_IRWXG | S_IRWXO;
+        return __ramfs_create(vnode, newpath, mode, pathname);
+}
+
 #define ramfs_open	((vnop_open_t)vop_nullop)
 #define ramfs_close	((vnop_close_t)vop_nullop)
 #define ramfs_seek	((vnop_seek_t)vop_nullop)
@@ -477,7 +494,7 @@ ramfs_getattr(struct vnode *vnode, struct vattr *attr)
 #define ramfs_link	((vnop_link_t)vop_eperm)
 #define ramfs_fallocate ((vnop_fallocate_t)vop_nullop)
 #define ramfs_readlink	((vnop_readlink_t)vop_nullop)
-#define ramfs_symlink	((vnop_symlink_t)vop_nullop)
+// #define ramfs_symlink	((vnop_symlink_t)vop_nullop)
 
 /*
  * vnode operations

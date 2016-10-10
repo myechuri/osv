@@ -48,6 +48,7 @@
 struct ramfs_node {
 	struct	ramfs_node *rn_next;   /* next node in the same directory */
 	struct	ramfs_node *rn_child;  /* first child node */
+        char    *symlink;       /* symlink */
 	int	 rn_type;	/* file or directory */
 	char	*rn_name;	/* name (null-terminated) */
 	size_t	 rn_namelen;	/* length of name not including terminator */
