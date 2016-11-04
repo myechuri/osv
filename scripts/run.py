@@ -169,7 +169,9 @@ def start_osv_qemu(options):
     args += ["-device", "virtio-rng-pci"]
 
     if options.hypervisor == "kvm":
-        args += ["-enable-kvm", "-cpu", "host,+x2apic"]
+        # myechuri
+        # args += ["-enable-kvm", "-cpu", "host,+x2apic"]
+        args += ["-cpu", "cortex-a53", "-machine", "virt", "-machine", "type=virt"]
     elif options.hypervisor == "none" or options.hypervisor == "qemu":
         pass
 
@@ -179,7 +181,9 @@ def start_osv_qemu(options):
         signal_option = ('off', 'on')[options.with_signals]
         args += ["-chardev", "stdio,mux=on,id=stdio,signal=%s" % signal_option]
         args += ["-mon", "chardev=stdio,mode=readline,default"]
-        args += ["-device", "isa-serial,chardev=stdio"]
+        # myechuri
+        # qemu-system-aarch64: -device isa-serial,chardev=stdio: No 'ISA' bus found for device 'isa-serial'
+        # args += ["-device", "isa-serial,chardev=stdio"]
 
     for a in options.pass_args or []:
         args += a.split()

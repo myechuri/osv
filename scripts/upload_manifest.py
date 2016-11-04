@@ -2,6 +2,9 @@
 
 import os, optparse, io, subprocess, socket, threading, stat, sys, re
 
+# myechuri
+import time
+
 try:
     import StringIO
     # This works on Python 2
@@ -73,12 +76,14 @@ def upload(osv, manifest, depends):
     files = list(expand(manifest))
     files = [(x, unsymlink(y)) for (x, y) in files]
 
+    # myechuri
+    time.sleep(30)
     # Wait for the guest to come up and tell us it's listening
-    while True:
-        line = osv.stdout.readline()
-        if not line or line.find(b"Waiting for connection") >= 0:
-            break
-        os.write(sys.stdout.fileno(), line)
+    # while True:
+    #   line = osv.stdout.readline()
+    #   if not line or line.find(b"Waiting for connection") >= 0:
+    #       break
+    #   os.write(sys.stdout.fileno(), line)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("127.0.0.1", 10000))
@@ -126,7 +131,9 @@ def upload(osv, manifest, depends):
             if not os.path.exists(stripped_filename) \
                     or (os.path.getmtime(stripped_filename) < \
                         os.path.getmtime(filename)):
-                subprocess.call(["strip", "-o", stripped_filename, filename])
+                # myechuri
+                # subprocess.call(["strip", "-o", stripped_filename, filename])
+                subprocess.call(["aarch64-linux-gnu-strip", "-o", stripped_filename, filename])
         return stripped_filename
 
 
@@ -138,6 +145,7 @@ def upload(osv, manifest, depends):
             cpio_send(link.encode())
         else:
             depends.write('\t%s \\\n' % (hostname,))
+
             hostname = strip_file(hostname)
             if os.path.islink(hostname):
                 perm = os.lstat(hostname).st_mode & 0o777
@@ -148,7 +156,9 @@ def upload(osv, manifest, depends):
                 perm = os.stat(hostname).st_mode & 0o777
                 cpio_send(cpio_header(name, perm | stat.S_IFDIR, 0))
             else:
-                perm = os.stat(hostname).st_mode & 0o777
+                # myechuri
+                # perm = os.stat(hostname).st_mode & 0o777
+                perm = 0o777
                 cpio_send(cpio_header(name, perm | stat.S_IFREG, os.stat(hostname).st_size))
                 with open(hostname, 'rb') as f:
                     cpio_send(f.read())
@@ -194,7 +204,9 @@ def main():
     depends.write('%s: \\\n' % (options.output,))
 
     image_path = os.path.abspath(options.output)
-    osv = subprocess.Popen('cd ../..; scripts/run.py --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)
+    # myechuri
+    # osv = subprocess.Popen('cd ../..; scripts/run.py --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)
+    osv = subprocess.Popen('cd ../..; scripts/run.py --qemu-path qemu-system-aarch64 --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)
 
     upload(osv, manifest, depends)
 
