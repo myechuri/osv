@@ -167,6 +167,7 @@ fi
 loader_size=`stat --printf %s $OUT/loader.img`
 zfs_start=$(($loader_size+2097151 & ~2097151))
 zfs_size=$(($fs_size - $zfs_start))
+echo loader_size=$loader_size zfs_start=$zfs_start zfs_size=$zfs_size fs_size=$fs_size
 
 # The python scripts called below assume the current directory is $OUT (as was
 # the case in our old build.mk).

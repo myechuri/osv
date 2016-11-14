@@ -122,9 +122,11 @@ def start_osv_qemu(options):
         args += [
         "-hda", options.image_file]
     else:
+        # myechuri
         args += [
         "-device", "virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off",
         "-drive", "file=%s,if=none,id=hd0,%s" % (options.image_file, aio)]
+        # args += ["-kernel", "/root/osv/build/release.aarch64/loader.img"]
 
     if options.no_shutdown:
         args += ["-no-reboot", "-no-shutdown"]
@@ -171,7 +173,7 @@ def start_osv_qemu(options):
     if options.hypervisor == "kvm":
         # myechuri
         # args += ["-enable-kvm", "-cpu", "host,+x2apic"]
-        args += ["-cpu", "cortex-a53", "-machine", "virt", "-machine", "type=virt"]
+        args += ["-cpu", "cortex-a53", "-machine", "virt"]
     elif options.hypervisor == "none" or options.hypervisor == "qemu":
         pass
 
@@ -184,6 +186,7 @@ def start_osv_qemu(options):
         # myechuri
         # qemu-system-aarch64: -device isa-serial,chardev=stdio: No 'ISA' bus found for device 'isa-serial'
         # args += ["-device", "isa-serial,chardev=stdio"]
+        # args += ["-device", "pl011"]
 
     for a in options.pass_args or []:
         args += a.split()
@@ -197,6 +200,7 @@ def start_osv_qemu(options):
 
         qemu_env['OSV_BRIDGE'] = options.bridge
         cmdline = [options.qemu_path] + args
+
         if options.dry_run:
             print(format_args(cmdline))
         else:

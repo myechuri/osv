@@ -2,9 +2,6 @@
 
 import os, optparse, io, subprocess, socket, threading, stat, sys, re
 
-# myechuri
-import time
-
 try:
     import StringIO
     # This works on Python 2
@@ -76,14 +73,16 @@ def upload(osv, manifest, depends):
     files = list(expand(manifest))
     files = [(x, unsymlink(y)) for (x, y) in files]
 
-    # myechuri
-    time.sleep(30)
-    # Wait for the guest to come up and tell us it's listening
-    # while True:
-    #   line = osv.stdout.readline()
-    #   if not line or line.find(b"Waiting for connection") >= 0:
-    #       break
-    #   os.write(sys.stdout.fileno(), line)
+    while True:
+        print("Attempting to read line")
+        line = osv.stdout.readline()
+        print("Read line: " + line)
+        if not line:
+            print("No stdout from osv")
+        if not line or line.find(b"Waiting for connection") >= 0:
+            print(line)
+            break
+        os.write(sys.stdout.fileno(), line)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(("127.0.0.1", 10000))
