@@ -38,6 +38,7 @@ void page_fault(exception_frame *ef)
      * and that interrupts in the saved pstate are enabled.
      * Then enable interrupts for the vm_fault.
      */
+    printf("mmu: page_fault: preemptable: %d\n", sched::preemptable());
     assert(sched::preemptable());
     assert(!(ef->spsr & processor::daif_i));
 

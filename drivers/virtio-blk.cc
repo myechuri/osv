@@ -195,6 +195,7 @@ void blk::req_done()
 
     while (1) {
 
+        printf("virtio-blk:req_done: while loop\n");
         virtio_driver::wait_for_queue(queue, &vring::used_ring_not_empty);
         trace_virtio_blk_wake();
 

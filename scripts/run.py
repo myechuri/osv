@@ -122,9 +122,8 @@ def start_osv_qemu(options):
         args += [
         "-hda", options.image_file]
     else:
-        # myechuri
         args += [
-        "-device", "virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off",
+        "-device", "virtio-blk-device,id=blk0,bootindex=0,drive=hd0,scsi=off",
         "-drive", "file=%s,if=none,id=hd0,%s" % (options.image_file, aio)]
         # args += ["-kernel", "/root/osv/build/release.aarch64/loader.img"]
 
@@ -171,9 +170,8 @@ def start_osv_qemu(options):
     args += ["-device", "virtio-rng-pci"]
 
     if options.hypervisor == "kvm":
-        # myechuri
-        # args += ["-enable-kvm", "-cpu", "host,+x2apic"]
-        args += ["-cpu", "cortex-a53", "-machine", "virt"]
+        args += ["-enable-kvm", "-cpu", "host,+x2apic"]
+        #args += ["-cpu", "cortex-a53", "-machine", "virt"]
     elif options.hypervisor == "none" or options.hypervisor == "qemu":
         pass
 
@@ -183,9 +181,8 @@ def start_osv_qemu(options):
         signal_option = ('off', 'on')[options.with_signals]
         args += ["-chardev", "stdio,mux=on,id=stdio,signal=%s" % signal_option]
         args += ["-mon", "chardev=stdio,mode=readline,default"]
-        # myechuri
+        args += ["-device", "isa-serial,chardev=stdio"]
         # qemu-system-aarch64: -device isa-serial,chardev=stdio: No 'ISA' bus found for device 'isa-serial'
-        # args += ["-device", "isa-serial,chardev=stdio"]
         # args += ["-device", "pl011"]
 
     for a in options.pass_args or []:

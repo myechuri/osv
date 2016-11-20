@@ -192,10 +192,18 @@ vring* virtio_driver::get_virt_queue(unsigned idx)
 
 void virtio_driver::wait_for_queue(vring* queue, bool (vring::*pred)() const)
 {
+    printf("virtio_driver: wait_for_queue BEGIN: preemptable=%d\n", sched::preemptable());
     sched::thread::wait_until([queue,pred] {
+
+        printf("virtio_driver: wait_for_queue thread::wait_until\n");
+        printf("virtio-vring: used_ring_not_empty=%d\n", queue->used_ring_not_empty());
+
         bool have_elements = (queue->*pred)();
+        printf("virtio_driver: wait_for_queue: have_elements=%d\n", have_elements);
         if (!have_elements) {
+            printf("virtio_driver: wait_for_queue: preemptable=%d\n", sched::preemptable());
             queue->enable_interrupts();
+            printf("virtio_driver: wait_for_queue: preemptable=%d, enabled interrupts\n", sched::preemptable());
 
             // we must check that the ring is not empty *after*
             // we enable interrupts to avoid a race where a packet

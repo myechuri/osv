@@ -113,10 +113,12 @@ namespace virtio {
 
     void vring::enable_interrupts()
     {
+        printf("virtio_vring: enable_interrupts BEGIN: preemptable=%d\n", sched::preemptable());
         trace_virtio_enable_interrupts(this);
         _avail->enable_interrupt();
         set_used_event(_used_ring_host_head, std::memory_order_relaxed);
         std::atomic_thread_fence(std::memory_order_seq_cst);
+        printf("virtio_vring: enable_interrupts END: preemptable=%d\n", sched::preemptable());
     }
 
     bool
@@ -263,6 +265,9 @@ namespace virtio {
 
     bool vring::used_ring_not_empty() const
     {
+        printf("virtio-vring: _used_ring_host_head=%d\n", _used_ring_host_head);
+        printf("virtio-vring: std::memory_order_relaxed=%d\n", std::memory_order_relaxed);
+        printf("virtio-vring: _idx value=%d\n", _used->_idx.load(std::memory_order_relaxed));
         return _used_ring_host_head != _used->_idx.load(std::memory_order_relaxed);
     }
 

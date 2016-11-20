@@ -21,6 +21,7 @@ using namespace std;
 static void run_cmd(const char *cmdpath, vector<string> args)
 {
     int ret;
+    printf("cmdpath=%s\n", cmdpath);
     auto ok = run(cmdpath, args, &ret);
     assert(ok && ret == 0);
 }
@@ -34,7 +35,9 @@ static void get_blk_devices(vector<string> &zpool_args)
     dir = opendir("/dev/");
     assert(dir != nullptr);
 
+    printf("Detected following devices in /dev/: ");
     while ((entry = readdir(dir)) != nullptr) {
+        printf(" %s,", entry->d_name); 
         if (!strstr(entry->d_name, "vblk")) {
             continue;
         }
@@ -47,12 +50,16 @@ static void get_blk_devices(vector<string> &zpool_args)
 
         zpool_args.push_back("/dev/" + string(entry->d_name));
     }
+    printf("\n");
 
     closedir(dir);
 }
 
 static void mkfs(void)
 {
+    vector<string> tmp_args = {};
+    get_blk_devices(tmp_args);
+
     // Create zfs device, then /etc/mnttab which is required by libzfs
     zfsdev::zfsdev_init();
 

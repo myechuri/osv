@@ -355,8 +355,13 @@ void* do_main_thread(void *_main_args)
     if (!arch_setup_console(opt_console)) {
         abort("Unknown console:%s\n", opt_console.c_str());
     }
+    
+    debug_early("loader.cc: arch_init_drivers.. \n");
     arch_init_drivers();
+
+    debug_early("loader.cc: console_init.. \n");
     console::console_init();
+
     nulldev::nulldev_init();
     if (opt_random) {
         randomdev::randomdev_init();
