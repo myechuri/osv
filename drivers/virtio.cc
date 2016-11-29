@@ -144,6 +144,7 @@ void virtio_driver::probe_virt_queues()
 
     do {
 
+        printf("virtio_driver:probe_virt_queues: _num_queues=%d max_virtqueues_nr=%d\n", _num_queues, max_virtqueues_nr);
         if (_num_queues >= max_virtqueues_nr) {
             return;
         }
@@ -151,6 +152,7 @@ void virtio_driver::probe_virt_queues()
         // Read queue size
         virtio_conf_writew(VIRTIO_PCI_QUEUE_SEL, _num_queues);
         qsize = virtio_conf_readw(VIRTIO_PCI_QUEUE_NUM);
+        printf("virtio_driver:probe_virt_queues: qsize=%d\n", qsize);
         if (0 == qsize) {
             break;
         }
@@ -158,12 +160,15 @@ void virtio_driver::probe_virt_queues()
         // Init a new queue
         vring* queue = new vring(this, qsize, _num_queues);
         _queues[_num_queues] = queue;
+        printf("virtio_driver:probe_virt_queues: queue=%d\n", queue);
 
         if (_dev.is_msix()) {
             // Setup queue_id:entry_id 1:1 correlation...
             virtio_conf_writew(VIRTIO_MSI_QUEUE_VECTOR, _num_queues);
+            printf("virtio_driver:probe_virt_queues: VIRTIO_MSI_QUEUE_VECTOR=%d _num_queues=%d virtio_conf_readw=%d\n", VIRTIO_MSI_QUEUE_VECTOR, _num_queues, virtio_conf_readw(VIRTIO_MSI_QUEUE_VECTOR));
             if (virtio_conf_readw(VIRTIO_MSI_QUEUE_VECTOR) != _num_queues) {
                 virtio_e("Setting MSIx entry for queue %d failed.", _num_queues);
+                printf("virtio_driver:probe_virt_queues: Setting MSIx entry for queue %d failed.", _num_queues);
                 return;
             }
         }
@@ -183,6 +188,7 @@ void virtio_driver::probe_virt_queues()
 
 vring* virtio_driver::get_virt_queue(unsigned idx)
 {
+    printf("virtio_driver:get_virt_queue: idx=%d _num_queues=%d\n", idx, _num_queues);
     if (idx >= _num_queues) {
         return nullptr;
     }
@@ -196,6 +202,7 @@ void virtio_driver::wait_for_queue(vring* queue, bool (vring::*pred)() const)
     sched::thread::wait_until([queue,pred] {
 
         printf("virtio_driver: wait_for_queue thread::wait_until\n");
+        printf("virtio_driver: wait_for_queue thread::wait_until queue=%d\n", queue);
         printf("virtio-vring: used_ring_not_empty=%d\n", queue->used_ring_not_empty());
 
         bool have_elements = (queue->*pred)();

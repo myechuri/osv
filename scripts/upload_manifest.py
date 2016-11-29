@@ -204,6 +204,7 @@ def main():
 
     # Default subprocess for x86_64:
     # osv = subprocess.Popen('cd ../..; scripts/run.py --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)
+    # osv = subprocess.Popen('qemu-system-x86_64 -m 512 -smp 1 -vnc none -gdb tcp::1234,server,nowait -device virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off -drive file=/root/osv/build/release.x64/usr.img,if=none,id=hd0,cache=unsafe,aio=threads  -enable-kvm -cpu host,+x2apic -chardev stdio,mux=on,id=stdio,signal=on -mon chardev=stdio,mode=readline,default -device isa-serial,chardev=stdio')
 
     # Port of above cmd to aarch64:
     # osv = subprocess.Popen('cd ../..; scripts/run.py --verbose --qemu-path qemu-system-aarch64 --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)

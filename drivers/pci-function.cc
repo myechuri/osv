@@ -34,6 +34,7 @@ namespace pci {
         u32 val = _dev->pci_readl(_pos);
 
         _is_mmio = ((val & PCI_BAR_MEMORY_INDICATOR_MASK) == PCI_BAR_MMIO);
+        printf("bar:init(): _is_mmio=%d\n", _is_mmio);
         if (_is_mmio) {
             _is_64 = ((val & PCI_BAR_MEM_ADDR_SPACE_MASK)
                 == PCI_BAR_64BIT_ADDRESS);
@@ -161,6 +162,7 @@ namespace pci {
 
     void bar::writew(u32 offset, u16 val)
     {
+        printf("bar:writew: _is_mmio=%d _addr_lo=%d offset=%d val=%d\n", _is_mmio, _addr_lo, offset, val);
         if (_is_mmio) {
             mmio_setw(_addr_mmio + offset, val);
         } else {
@@ -282,7 +284,8 @@ namespace pci {
         _msix.msix_pba_offset = val & ~PCIM_MSIX_BIR_MASK;
 
         // We've found an MSI-x capability
-        _have_msix = true;
+        // _have_msix = true;
+        _have_msix = false;
 
         return true;
     }

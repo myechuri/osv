@@ -123,7 +123,7 @@ def start_osv_qemu(options):
         "-hda", options.image_file]
     else:
         args += [
-        "-device", "virtio-blk-device,id=blk0,bootindex=0,drive=hd0,scsi=off",
+        "-device", "virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off",
         "-drive", "file=%s,if=none,id=hd0,%s" % (options.image_file, aio)]
         # args += ["-kernel", "/root/osv/build/release.aarch64/loader.img"]
 
