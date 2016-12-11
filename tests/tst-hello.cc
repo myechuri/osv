@@ -9,6 +9,8 @@
 
 int main(int ac, char** av)
 {
-    std::cout << "Hello World\n";
+    while (1) {
+        std::cout << "Hello World loop\n";
+    }
     return 0;
 }
