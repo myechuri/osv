@@ -210,7 +210,9 @@ def main():
     # osv = subprocess.Popen('cd ../..; scripts/run.py --verbose --qemu-path qemu-system-aarch64 --vnc none -m 512 -c1 -i %s -u -s -e "--norandom --nomount --noinit /tools/mkfs.so; /tools/cpiod.so --prefix /zfs/zfs/; /zfs.so set compression=off osv" --forward tcp:10000::10000' % image_path, shell=True, stdout=subprocess.PIPE)
 
     # Lets first get the qemu-system-aarch64 cmd work before calling it via scripts/run.py
-    osv = subprocess.Popen('qemu-system-aarch64 -m 512 -smp 1 -cpu cortex-a57 -kernel /root/osv/build/release.aarch64/loader.img  -nographic -machine virt -append "--trace-backtrace --norandom --nomount --noinit /tools/mkfs.so" -device virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off -drive file=/root/osv/build/release.aarch64/usr.img,if=none,id=hd0 -device virtio-rng-pci', shell=True, stdout=subprocess.PIPE)
+    # Raspberry Pi 3: cortex-a53
+    # Inforce 6309: cortex-a57
+    osv = subprocess.Popen('qemu-system-aarch64 -m 512 -smp 1 -cpu cortex-a53 -kernel /root/osv/build/release.aarch64/loader.img  -nographic -machine virt -append "--trace-backtrace --norandom --nomount --noinit /tools/mkfs.so" -device virtio-blk-pci,id=blk0,bootindex=0,drive=hd0,scsi=off -drive file=/root/osv/build/release.aarch64/usr.img,if=none,id=hd0 -device virtio-rng-pci', shell=True, stdout=subprocess.PIPE)
 
     upload(osv, manifest, depends)
 
