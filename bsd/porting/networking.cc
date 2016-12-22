@@ -29,6 +29,7 @@ void for_each_if(std::function<void (std::string)> func)
     IFNET_RLOCK_NOSLEEP();
     TAILQ_FOREACH(ifp, &V_ifnet, if_link) {
         std::string str(ifp->if_xname);
+        printf("networking:for_each_if if_name=%s\n", ifp->if_xname);
         func(str);
     }
     IFNET_RUNLOCK_NOSLEEP();
