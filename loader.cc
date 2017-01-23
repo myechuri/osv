@@ -377,6 +377,7 @@ void* do_main_thread(void *_main_args)
 
     bool has_if = false;
     osv::for_each_if([&has_if] (std::string if_name) {
+        debug("loader.cc: if_name=%s \n", if_name);
         if (if_name == "lo0")
             return;
 
