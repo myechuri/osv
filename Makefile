@@ -420,6 +420,9 @@ ifeq ($(arch),aarch64)
 # to the bootfs.manifest.skel atm to get it to work.
 #
 tools += tests/tst-hello.so
+
+# This is the cmdline to modify to use user-supplied target application
+# instead of defaulting to tests/tst-hello.so.
 cmdline = --nomount tests/tst-hello.so
 endif
 

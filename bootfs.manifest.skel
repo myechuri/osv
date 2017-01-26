@@ -5,6 +5,6 @@
 /zfs.so: zfs.so
 /tools/mkfs.so: tools/mkfs/mkfs.so
 /tools/cpiod.so: tools/cpiod/cpiod.so
-/tools/uush.so: tools/uush/uush.so
-/hello.so: /root/osv/apps/native-example/hello
-/tests/tst-hello.so: tests/tst-hello.so
+
+# User will insert below line at runtime.
+# /tests/tst-hello.so: /myapp-location/myapp

@@ -169,6 +169,9 @@ zfs_start=$(($loader_size+2097151 & ~2097151))
 zfs_size=$(($fs_size - $zfs_start))
 echo loader_size=$loader_size zfs_start=$zfs_start zfs_size=$zfs_size fs_size=$fs_size
 
+# myechuri: For aarch64, stop build here - ukonvrt will take it from here.
+exit 0
+
 # The python scripts called below assume the current directory is $OUT (as was
 # the case in our old build.mk).
 cd $OUT
