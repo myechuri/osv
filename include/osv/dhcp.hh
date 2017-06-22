@@ -142,9 +142,6 @@ namespace dhcp {
         void compose_release(struct ifnet* ifp,
                              boost::asio::ip::address_v4 yip,
                              boost::asio::ip::address_v4 sip);
-        void compose_release(struct ifnet* ifp,
-                             boost::asio::ip::address_v4 yip,
-                             boost::asio::ip::address_v4 sip);
 
         /* Decode packet */
         bool is_valid_dhcp();

@@ -131,13 +131,6 @@ bool xen_ack_irq()
     return true;
 }
 
-static __attribute__((constructor)) void setup_xen_irq()
-{
-    auto cpu = sched::cpu::current();
-    HYPERVISOR_shared_info->vcpu_info[cpu->id].evtchn_upcall_pending = 0;
-    return true;
-}
-
 void irq_setup(interrupt *intr)
 {
     assert(is_xen());
