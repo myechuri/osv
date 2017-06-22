@@ -44,6 +44,7 @@
 #include <osv/sampler.hh>
 #include <osv/app.hh>
 #include <osv/firmware.hh>
+#include <osv/xen.hh>
 #include <dirent.h>
 #include <iostream>
 #include <fstream>
@@ -315,20 +316,7 @@ std::vector<std::vector<std::string> > prepare_commands(int ac, char** av)
 
     // concatenate everything
     for (auto i = 0; i < ac; i++) {
-        std::string arg("");
-        char* env = strchr(av[i],'$');
-        if (av[i] && env) {
-            *env = '\0';
-            env++;
-            auto tmp = getenv(env);
-            arg = av[i];
-            if (tmp) {
-                arg += tmp;
-            }
-        } else {
-            arg = av[i];
-        }
-        line += arg + " ";
+        line += std::string(av[i]) + " ";
     }
 
     commands = osv::parse_command_line(line, ok);
@@ -542,6 +530,7 @@ void main_cont(int ac, char** av)
 
     setenv("OSV_VERSION", osv::version().c_str(), 1);
 
+    xen::irq_init();
     smp_launch();
     setenv("OSV_CPUS", std::to_string(sched::cpus.size()).c_str(), 1);
     boot_time.event("SMP launched");

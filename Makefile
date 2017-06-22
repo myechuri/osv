@@ -309,7 +309,7 @@ gcc-sysroot = $(if $(CROSS_PREFIX), --sysroot external/$(arch)/gcc.bin) \
 # To add something that will *not* be part of the main kernel, you can do:
 #
 #   mydir/*.o EXTRA_FLAGS = <MY_STUFF>
-EXTRA_FLAGS = -D__OSV_CORE__ -DOSV_KERNEL_BASE=$(kernel_base)
+EXTRA_FLAGS = -D__OSV_CORE__ -DOSV_KERNEL_BASE=$(kernel_base) -DOSV_LZKERNEL_BASE=$(lzkernel_base)
 EXTRA_LIBS =
 COMMON = $(autodepend) -g -Wall -Wno-pointer-arith $(CFLAGS_WERROR) -Wformat=0 -Wno-format-security \
 	-D __BSD_VISIBLE=1 -U _FORTIFY_SOURCE -fno-stack-protector $(INCLUDES) \
@@ -414,7 +414,17 @@ $(out)/loader-stripped.elf: $(out)/loader.elf
 
 ifeq ($(arch),x64)
 
+# kernel_base is where the kernel will be loaded after uncompression.
+# lzkernel_base is where the compressed kernel is loaded from disk.
+# As issue #872 explains, lzkernel_base must be chosen high enough for
+# (lzkernel_base - kernel_base) to be bigger than the kernel's size.
+# On the other hand, don't increase lzkernel_base too much, because it puts
+# a lower limit on the VM's RAM size.
+# Below we verify that the compiled kernel isn't too big given the current
+# setting of these paramters; Otherwise we recommend to increase lzkernel_base.
 kernel_base := 0x200000
+lzkernel_base := 0x1800000
+
 
 $(out)/boot.bin: arch/x64/boot16.ld $(out)/arch/x64/boot16.o
 	$(call quiet, $(LD) -o $@ -T $^, LD $@)
@@ -452,8 +462,8 @@ $(out)/fastlz/lzloader.o: fastlz/lzloader.cc | generated-headers
 
 $(out)/lzloader.elf: $(out)/loader-stripped.elf.lz.o $(out)/fastlz/lzloader.o arch/x64/lzloader.ld \
 	$(out)/fastlz/fastlz.o
-	$(call very-quiet, scripts/check-image-size.sh $(out)/loader-stripped.elf 23068672)
-	$(call quiet, $(LD) -o $@ \
+	$(call very-quiet, scripts/check-image-size.sh $(out)/loader-stripped.elf $(shell bash -c 'echo $$(($(lzkernel_base)-$(kernel_base)))'))
+	$(call quiet, $(LD) -o $@ --defsym=OSV_LZKERNEL_BASE=$(lzkernel_base) \
 		-Bdynamic --export-dynamic --eh-frame-hdr --enable-new-dtags \
 		-T arch/x64/lzloader.ld \
 		$(filter %.o, $^), LINK lzloader.elf)
@@ -487,7 +497,7 @@ $(out)/preboot.bin: $(out)/preboot.elf
 $(out)/loader.img: $(out)/preboot.bin $(out)/loader-stripped.elf
 	$(call quiet, dd if=$(out)/preboot.bin of=$@ > /dev/null 2>&1, DD $@ preboot.bin)
 	$(call quiet, dd if=$(out)/loader-stripped.elf of=$@ conv=notrunc obs=4096 seek=16 > /dev/null 2>&1, DD $@ loader-stripped.elf)
-	$(call quiet, scripts/imgedit.py setargs $@ $(cmdline), IMGEDIT $@)
+	$(call quiet, scripts/imgedit.py setargs "-f raw $@" $(cmdline), IMGEDIT $@)
 
 endif # aarch64
 
@@ -818,6 +828,7 @@ drivers += drivers/ahci.o
 drivers += drivers/ide.o
 drivers += drivers/scsi-common.o
 drivers += drivers/vmw-pvscsi.o
+drivers += drivers/xenplatform-pci.o
 endif # x64
 
 ifeq ($(arch),aarch64)
@@ -1282,6 +1293,20 @@ musl += math/tgammal.o
 musl += math/trunc.o
 musl += math/truncf.o
 musl += math/truncl.o
+
+# Issue #867: Gcc 4.8.4 has a bug where it optimizes the trivial round-
+# related functions incorrectly - it appears to convert calls to any
+# function called round() to calls to a function called lround() -
+# and similarly for roundf() and roundl().
+# None of the specific "-fno-*" options disable this buggy optimization,
+# unfortunately. The simplest workaround is to just disable optimization
+# for the affected files.
+$(out)/musl/src/math/lround.o: conf-opt := $(conf-opt) -O0
+$(out)/musl/src/math/lroundf.o: conf-opt := $(conf-opt) -O0
+$(out)/musl/src/math/lroundl.o: conf-opt := $(conf-opt) -O0
+$(out)/musl/src/math/llround.o: conf-opt := $(conf-opt) -O0
+$(out)/musl/src/math/llroundf.o: conf-opt := $(conf-opt) -O0
+$(out)/musl/src/math/llroundl.o: conf-opt := $(conf-opt) -O0
 
 musl += misc/a64l.o
 libc += misc/basename.o

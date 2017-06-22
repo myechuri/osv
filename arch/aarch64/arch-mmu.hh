@@ -144,11 +144,6 @@ inline void pt_element_common<N>::set_pfn(u64 pfn, bool large) {
     set_addr(pfn << page_size_shift, large);
 }
 
-static inline bool dbg_mem_is_dev(phys addr)
-{
-    return addr >= mmu::device_range_start && addr < mmu::device_range_stop;
-}
-
 template<int N>
 pt_element<N> make_pte(phys addr, bool leaf, unsigned perm = perm_rwx,
                        mattr mem_attr = mattr_default)
@@ -172,11 +167,9 @@ pt_element<N> make_pte(phys addr, bool leaf, unsigned perm = perm_rwx,
     switch (mem_attr) {
     default:
     case mattr::normal:
-        assert(!dbg_mem_is_dev(addr));
         pte.set_attridx(4);
         break;
     case mattr::dev:
-        assert(dbg_mem_is_dev(addr));
         pte.set_attridx(0);
         break;
     }

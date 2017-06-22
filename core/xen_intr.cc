@@ -111,9 +111,11 @@ void xen_irq::_cpu_init(sched::cpu *c)
     (*(_thread.for_cpu(c)))->start();
 }
 
-xen_irq::xen_irq()
+xen_irq::xen_irq(interrupt *intr)
     : _cpu_notifier([this] { cpu_init(); })
 {
+    if (intr)
+        _intr.reset(intr);
 }
 
 static xen_irq *xen_irq_handlers;
@@ -131,11 +133,15 @@ bool xen_ack_irq()
 
 static __attribute__((constructor)) void setup_xen_irq()
 {
-    if (!is_xen()) {
-        return;
-    }
+    auto cpu = sched::cpu::current();
+    HYPERVISOR_shared_info->vcpu_info[cpu->id].evtchn_upcall_pending = 0;
+    return true;
+}
 
-    xen_irq_handlers = new xen_irq;
+void irq_setup(interrupt *intr)
+{
+    assert(is_xen());
+    xen_irq_handlers = new xen_irq(intr);
 }
 }
 
