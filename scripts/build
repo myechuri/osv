@@ -15,8 +15,6 @@ MAKEFLAGS=${MAKEFLAGS/ modules=/ zzz=}
 MAKEFLAGS=${MAKEFLAGS/#modules=/zzz=}
 unset image modules
 
-USE_EMULATION=y
-
 # Pass to "make" all the given args except "image=..." or "module=..."
 declare -a args
 # Make is going to be invoked twice. At the first run ("stage1") we
@@ -32,6 +30,7 @@ do
 	clean)
 		stage1_args=clean ;;
         no-virt)
+                # Use emulation.
                 USE_EMULATION=y ;;
 	*)	# yuck... Is there a prettier way to append to array?
 		args[${#args[@]}]="$i" ;;
