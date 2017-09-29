@@ -29,6 +29,9 @@ do
 	image=*|modules=*|fs=*|usrskel=*|check) ;;
 	clean)
 		stage1_args=clean ;;
+        no-virt)
+                # Use emulation.
+                USE_EMULATION=y ;;
 	*)	# yuck... Is there a prettier way to append to array?
 		args[${#args[@]}]="$i" ;;
 	esac
