@@ -92,6 +92,14 @@ scripts/build
 
 to build an image of the OSv kernel and the default application.
 
+If you wish to build on a machine lacking hardware virtualization,
+please pass flag `no-virt` to `scripts/build` as follows:
+
+```
+scripts/build no-virt
+```
+
+
 scripts/build creates the image ```build/last/usr.img``` in qcow2 format.
 To convert this image to other formats, use the ```scripts/convert```
 tool, which can create an image in the vmdk, vdi, raw, or qcow2-old formats
