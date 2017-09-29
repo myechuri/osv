@@ -44,12 +44,8 @@ gdt_end = .
 .bss
 
 .align 16
-. = . + 4096*4
-init_stack_top = .
-
 . = . + 4096*10
-.global interrupt_stack_top
-interrupt_stack_top = .
+init_stack_top = .
 
 .text
 
@@ -106,9 +102,9 @@ start64:
     mov %rbx, osv_multiboot_info
     lea init_stack_top, %rsp
     call premain
-    mov __argc, %edi
-    mov __argv, %rsi
-    jmp main
+    mov __loader_argc, %edi
+    mov __loader_argv, %rsi
+    call main
     .cfi_endproc
 
 # The smp trampoline must be in the lower 1MB, so we manually relocate

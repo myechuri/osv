@@ -96,23 +96,31 @@ Everything after first $ is assumed to be env var.
 So with AA=aa, "$AA" -> "aa", and "X$AA" => "Xaa"
 More than one $ is not supported, and "${AA}" is also not.
 */
+void expand_environ_vars(std::string& word)
+{
+    size_t pos;
+    if ((pos = word.find_first_of('$')) != std::string::npos) {
+        std::string new_word = word.substr(0, pos);
+        std::string key = word.substr(pos+1);
+        auto tmp = getenv(key.c_str());
+        //debug("    new_word=%s, key=%s, tmp=%s\n", new_word.c_str(), key.c_str(), tmp);
+        if (tmp) {
+            new_word += tmp;
+        }
+        word = new_word;
+    }
+}
+
+/*
+Expand environ vars in each word.
+*/
 void expand_environ_vars(std::vector<std::vector<std::string>>& result)
 {
     std::vector<std::vector<std::string>>::iterator cmd_iter;
     std::vector<std::string>::iterator line_iter;
     for (cmd_iter=result.begin(); cmd_iter!=result.end(); cmd_iter++) {
         for (line_iter=cmd_iter->begin(); line_iter!=cmd_iter->end(); line_iter++) {
-            size_t pos;
-            if ((pos = line_iter->find_first_of('$')) != std::string::npos) {
-                std::string new_word = line_iter->substr(0, pos);
-                std::string key = line_iter->substr(pos+1);
-                auto tmp = getenv(key.c_str());
-                //debug("    new_word=%s, key=%s, tmp=%s\n", new_word.c_str(), key.c_str(), tmp);
-                if (tmp) {
-                    new_word += tmp;
-                }
-                *line_iter = new_word;
-            }
+            expand_environ_vars(*line_iter);
         }
     }
 }
@@ -167,19 +175,34 @@ static void runscript_process_options(std::vector<std::vector<std::string> >& re
         if (vars.count("env")) {
             for (auto t : vars["env"].as<std::vector<std::string>>()) {
                 size_t pos = t.find("?=");
+                std::string key, value;
                 if (std::string::npos == pos) {
                     // the basic "KEY=value" syntax
-                    debug("Setting in environment: %s\n", t);
-                    putenv(strdup(t.c_str()));
+                    size_t pos2 = t.find("=");
+                    assert(std::string::npos != pos2);
+                    key = t.substr(0, pos2);
+                    value = t.substr(pos2+1);
+                    //debug("Setting in environment (def): %s=%s\n", key, value);
                 }
                 else {
                     // "KEY?=value", makefile-like syntax, set variable only if not yet set
-                    auto key = t.substr(0, pos);
-                    auto value = t.substr(pos+2);
-                    if (nullptr == getenv(key.c_str())) {
-                        debug("Setting in environment: %s=%s\n", key, value);
-                        setenv(key.c_str(), value.c_str(), 1);
+                    key = t.substr(0, pos);
+                    value = t.substr(pos+2);
+                    if (nullptr != getenv(key.c_str())) {
+                        // key already used, do not overwrite it
+                        //debug("NOT setting in environment (makefile): %s=%s\n", key, value);
+                        key = "";
                     }
+                    else {
+                        //debug("Setting in environment (makefile): %s=%s\n", key, value);
+                    }
+                }
+
+                if (key.length() > 0) {
+                    // we have something to set
+                    expand_environ_vars(value);
+                    debug("Setting in environment: %s=%s\n", key, value);
+                    setenv(key.c_str(), value.c_str(), 1);
                 }
 
             }
@@ -191,7 +214,7 @@ static void runscript_process_options(std::vector<std::vector<std::string> >& re
 }
 
 /*
-If cmd starts with "runcript file", read content of file and
+If cmd starts with "runscript file", read content of file and
 return vector of all programs to be run.
 File can contain multiple commands per line.
 ok flag is set to false on parse error, and left unchanged otherwise.
@@ -234,10 +257,13 @@ runscript_expand(const std::vector<std::string>& cmd, bool &ok, bool &is_runscri
                 return result2;
             }
             // Replace env vars found inside script.
-            // Options, script command and script command parameters can be set via env vars.
-            expand_environ_vars(result3);
             // process and remove options from command
             runscript_process_options(result3);
+            // Options, script command and script command parameters can be set via env vars.
+            // Do this later than runscript_process_options, so that
+            // runscript with content "--env=PORT?=1111 /usr/lib/mpi_hello.so aaa $PORT ccc"
+            // will have argv[2] equal to final value of PORT env var.
+            expand_environ_vars(result3);
             result2.insert(result2.end(), result3.begin(), result3.end());
             line_num++;
         }
@@ -285,41 +311,151 @@ parse_command_line(const std::string line,  bool &ok)
 // time.  So let's go for a more traditional memory management to avoid testing
 // early / not early, etc
 char *osv_cmdline = nullptr;
-static std::vector<char*> args;
+static char* parsed_cmdline = nullptr;
 
 std::string getcmdline()
 {
     return std::string(osv_cmdline);
 }
 
+#define MY_DEBUG(args...) if(0) printf(args)
+/*
+loader_parse_cmdline accepts input str - OSv commandline, say:
+--env=AA=aa --env=BB=bb1\ bb2 app.so arg1 arg2
+
+The loader options are parsed and saved into argv, up to first not-loader-option
+token. argc is set to number of loader options.
+app_cmdline is set to unconsumed part of input str.
+Example output:
+argc = 2
+argv[0] = "--env=AA=aa"
+argv[1] = "--env=BB=bb1 bb2"
+argv[2] = NULL
+app_cmdline = "app.so arg1 arg2"
+
+The whitespaces can be escaped with '\' to allow options with spaces.
+Notes:
+ - _quoting_ loader options with space is not supported.
+ - input str is modified.
+ - output argv has to be free-d by caller.
+ - the strings pointed to by output argv and app_cmdline are in same memory as
+   original input str. The caller is not permited to modify or free data at str
+   after the call to loader_parse_cmdline, as that would corrupt returned
+   results in argv and app_cmdline.
+
+Note that std::string is intentionly not used, as it is not fully functional when
+called early during boot.
+*/
+void loader_parse_cmdline(char* str, int *pargc, char*** pargv, char** app_cmdline) {
+    *pargv = nullptr;
+    *pargc = 0;
+    *app_cmdline = nullptr;
+
+    const char *delim = " \t\n";
+    char esc = '\\';
+
+    // parse string
+    char *ap;
+    char *ap0=nullptr, *apE=nullptr; // first and last token.
+    int ntoken = 0;
+    ap0 = nullptr;
+    while(1) {
+        // Did we already consume all loader options?
+        // Look at first non-space char - if =='-', than this is loader option.
+        // Otherwise, it is application command.
+        char *ch = str;
+        while (ch && *ch != '\0') {
+            if (strchr(delim, *ch)) {
+                ch++;
+                continue;
+            }
+            else if (*ch == '-') {
+                // this is a loader option, continue with loader parsing
+                break;
+            }
+            else {
+                // ch is not space or '-', it is start of application command
+                // Save current position and stop loader parsing.
+                *app_cmdline = str;
+                break;
+            }
+        }
+        if (*ch == '\0') {
+            // empty str, contains only spaces
+            *app_cmdline = str;
+        }
+        if (*app_cmdline) {
+            break;
+        }
+        // there are loader options, continue with parsing
+
+        ap = stresep(&str, delim, esc);
+        assert(ap);
+
+        MY_DEBUG("  ap = %p %s, *ap=%d\n", ap, ap, *ap);
+        if (*ap != '\0') {
+            // valid token found
+            ntoken++;
+            if (ap0 == nullptr) {
+                ap0 = ap;
+            }
+            apE = ap;
+        }
+        else {
+            // Multiple consecutive delimiters found. Stresep will write multiple
+            // '\0' into str. Squash them into one, so that argv will be 'nice',
+            // in memory consecutive array of C strings.
+            if (str) {
+                MY_DEBUG("    shift   str %p '%s' <- %p '%s'\n", str-1, str-1, str, str);
+                memmove(str-1, str, strlen(str) + 1);
+                str--;
+            }
+        }
+        if (str == nullptr) {
+            // end of string, last char was delimiter
+            *app_cmdline = ap + strlen(ap); // make app_cmdline valid pointer to '\0'.
+            MY_DEBUG("    make app_cmdline valid pointer to '\\0' ap=%p '%s', app_cmdline=%p '%s'\n",
+                ap, ap, app_cmdline, app_cmdline);
+            break;
+        }
+
+    }
+    MY_DEBUG("  ap0 = %p '%s', apE = %p '%s', ntoken = %d, app_cmdline=%p '%s'\n",
+        ap0, ap0, apE, apE, ntoken, *app_cmdline, *app_cmdline);
+    *pargv = (char**)malloc(sizeof(char*) * (ntoken+1));
+    // str was modified, tokes are separated by exactly one '\0'
+    int ii;
+    for(ap = ap0, ii = 0; ii < ntoken; ap += strlen(ap)+1, ii++) {
+        assert(ap != nullptr);
+        assert(*ap != '\0');
+        MY_DEBUG("  argv[%d] = %p %s\n", ii, ap, ap);
+        (*pargv)[ii] = ap;
+    }
+    MY_DEBUG("  ntoken = %d, ii = %d\n", ntoken, ii);
+    assert(ii == ntoken);
+    (*pargv)[ii] = nullptr;
+    *pargc = ntoken;
+}
+#undef MY_DEBUG
+
 int parse_cmdline(const char *p)
 {
-    char* save;
-
-    if (args.size()) {
-        // From the strtok manpage, we see that: "The first call to strtok()
-        // sets this pointer to point to the first byte of the string." It
-        // follows from this that the first argument contains the address we
-        // should use to free the memory allocated for the string
-        free(args[0]);
+    if (__loader_argv) {
+        // __loader_argv was allocated by loader_parse_cmdline
+        free(__loader_argv);
     }
 
-    args.resize(0);
     if (osv_cmdline) {
         free(osv_cmdline);
     }
     osv_cmdline = strdup(p);
 
-    char* cmdline = strdup(p);
-
-    while ((p = strtok_r(cmdline, " \t\n", &save)) != nullptr) {
-        args.push_back(const_cast<char *>(p));
-        cmdline = nullptr;
+    if (parsed_cmdline) {
+        free(parsed_cmdline);
     }
-    args.push_back(nullptr);
-    __argv = args.data();
-    __argc = args.size() - 1;
+    parsed_cmdline = strdup(p);
 
+    loader_parse_cmdline(parsed_cmdline, &__loader_argc, &__loader_argv, &__app_cmdline);
     return 0;
 }
 

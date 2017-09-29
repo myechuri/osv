@@ -35,15 +35,9 @@
 [submodule "external/aarch64/openjdk.bin"]
 	path = external/aarch64/openjdk.bin
 	url = ../../cloudius-systems/aarch64-openjdk.bin.git
-[submodule "modules/httpserver/swagger-ui"]
-	path = modules/httpserver/swagger-ui
-	url = ../../cloudius-systems/swagger-ui.git
 [submodule "musl"]
 	path = musl
 	url = ../../cloudius-systems/musl.git
-[submodule "modules/httpserver/osv-gui"]
-	path = modules/httpserver/osv-gui
-	url = ../../cloudius-systems/osv-gui.git
 [submodule "external/fs/libnfs"]
 	path = external/fs/libnfs
 	url = https://github.com/sahlberg/libnfs.git
